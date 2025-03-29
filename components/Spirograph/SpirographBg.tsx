@@ -5,7 +5,7 @@ const Spirograph: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const requestIdRef = useRef<number | null>(null);
 
-  const baseSpeed=0.05;
+  const baseSpeed = 0.05;
   const outerArmSpeed = baseSpeed;
   const innerArmSpeed = baseSpeed * Math.PI;
   const drawing = true;
@@ -16,8 +16,14 @@ const Spirograph: React.FC = () => {
     outer: 0,
     inner: 0,
   });
-  // State to track path points
-  const pointsRef = useRef<Array<{ x: number; y: number }>>([]);
+  
+  // State to track path points with age for fading
+  const pointsRef = useRef<Array<{ x: number; y: number; age: number }>>([]);
+  // All path points for continuous line
+  const allPointsRef = useRef<Array<{ x: number; y: number }>>([]);
+  
+  const maxTrailPoints = 100; // Maximum number of points to keep in the trail
+  const trailFadeRate = 0.02; // How quickly the trail fades (0-1)
 
   const drawSpirograph = (
     ctx: CanvasRenderingContext2D,
@@ -28,7 +34,7 @@ const Spirograph: React.FC = () => {
     const centerY = height / 2;
 
     // const outerRadius = Math.min(width, height) * 0.2;
-    const outerRadius = 150;
+    const outerRadius = 200;
     const innerRadius = outerRadius * 0.4;
 
     // Update angles
@@ -43,18 +49,77 @@ const Spirograph: React.FC = () => {
     const penX = outerX + Math.cos(angleRef.current.inner) * innerRadius;
     const penY = outerY + Math.sin(angleRef.current.inner) * innerRadius;
 
-    // Add point to path
-    pointsRef.current.push({ x: penX, y: penY });
+    // Add point to fading trail with age 0
+    pointsRef.current.push({ x: penX, y: penY, age: 0 });
+    
+    // Add point to continuous line
+    allPointsRef.current.push({ x: penX, y: penY });
+
+    // Limit trail length for fading effect
+    if (pointsRef.current.length > maxTrailPoints) {
+      pointsRef.current.shift();
+    }
+
+    // Age existing points
+    pointsRef.current.forEach((point) => {
+      point.age += trailFadeRate;
+    });
 
     // Clear canvas if requested
     if (clear) {
       ctx.clearRect(0, 0, width, height);
       pointsRef.current = [];
+      allPointsRef.current = [];
       setClear(false);
     }
 
     // Draw the spirograph structure
     ctx.clearRect(0, 0, width, height);
+
+    // Draw the continuous line first (background)
+    ctx.beginPath();
+    if (allPointsRef.current.length > 0) {
+      ctx.moveTo(allPointsRef.current[0].x, allPointsRef.current[0].y);
+      for (let i = 1; i < allPointsRef.current.length; i++) {
+        ctx.lineTo(allPointsRef.current[i].x, allPointsRef.current[i].y);
+      }
+    }
+    ctx.strokeStyle = "#fffb"; // Very transparent white
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Draw the trail with gradient opacity
+    if (pointsRef.current.length > 1) {
+      for (let i = 1; i < pointsRef.current.length; i++) {
+        const prevPoint = pointsRef.current[i - 1];
+        const currentPoint = pointsRef.current[i];
+
+        // Calculate opacity based on age (newer points are more visible)
+        const opacity = Math.max(0, 1 - currentPoint.age);
+
+        ctx.beginPath();
+        ctx.moveTo(prevPoint.x, prevPoint.y);
+        ctx.lineTo(currentPoint.x, currentPoint.y);
+
+        // Create gradient for glow effect
+        const gradient = ctx.createLinearGradient(
+          prevPoint.x,
+          prevPoint.y,
+          currentPoint.x,
+          currentPoint.y
+        );
+
+        const color = `rgba(255, 255, 255, ${opacity})`;
+        const glowColor = `rgba(150, 200, 255, ${opacity * 0.8})`;
+
+        gradient.addColorStop(0, glowColor);
+        gradient.addColorStop(1, color);
+
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 2 + (1 - currentPoint.age) * 3; // Thicker for newer points
+        ctx.stroke();
+      }
+    }
 
     // Draw outer arm
     ctx.beginPath();
@@ -89,17 +154,21 @@ const Spirograph: React.FC = () => {
     ctx.fillStyle = "white";
     ctx.fill();
 
-    // Draw the path
+    // Add glow around the pen point
     ctx.beginPath();
-    if (pointsRef.current.length > 0) {
-      ctx.moveTo(pointsRef.current[0].x, pointsRef.current[0].y);
-      for (let i = 1; i < pointsRef.current.length; i++) {
-        ctx.lineTo(pointsRef.current[i].x, pointsRef.current[i].y);
-      }
-    }
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.arc(penX, penY, 6, 0, Math.PI * 2);
+    const glowGradient = ctx.createRadialGradient(
+      penX,
+      penY,
+      2,
+      penX,
+      penY,
+      10
+    );
+    glowGradient.addColorStop(0, "rgba(255, 255, 255, 0.8)");
+    glowGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = glowGradient;
+    ctx.fill();
   };
 
   const animate = (): void => {
@@ -135,16 +204,8 @@ const Spirograph: React.FC = () => {
         cancelAnimationFrame(requestIdRef.current);
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawing]);
-
-  // const handleClearCanvas = (): void => {
-  //   setClear(true);
-  // };
-
-  // const handleToggleDrawing = (): void => {
-  //   setDrawing((prev) => !prev);
-  // };
 
   return <canvas ref={canvasRef} className="h-screen w-screen bg-primary" />;
 };
