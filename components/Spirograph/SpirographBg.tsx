@@ -5,10 +5,9 @@ const Spirograph: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const requestIdRef = useRef<number | null>(null);
 
-  const baseSpeed = 0.05;
-  const outerArmSpeed = baseSpeed;
-  const innerArmSpeed = baseSpeed * Math.PI;
   const drawing = true;
+
+  const baseSpeedRef = useRef(0.01); // Use a ref to dynamically update baseSpeed
   const [clear, setClear] = useState<boolean>(false);
 
   // State to track angles
@@ -16,30 +15,29 @@ const Spirograph: React.FC = () => {
     outer: 0,
     inner: 0,
   });
-  
+
   // State to track path points with age for fading
   const pointsRef = useRef<Array<{ x: number; y: number; age: number }>>([]);
   // All path points for continuous line
   const allPointsRef = useRef<Array<{ x: number; y: number }>>([]);
-  
-  const maxTrailPoints = 100; // Maximum number of points to keep in the trail
-  const trailFadeRate = 0.02; // How quickly the trail fades (0-1)
+
+  const maxTrailPoints = 500; // Maximum number of points to keep in the trail
+  const trailFadeRate = 0.01; // How quickly the trail fades (0-1)
 
   const drawSpirograph = (
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number
   ): void => {
-    const centerX = width / 2;
-    const centerY = height / 2;
+    const devicePixelRatio = window.devicePixelRatio || 1;
 
-    // const outerRadius = Math.min(width, height) * 0.2;
-    const outerRadius = 200;
-    const innerRadius = outerRadius * 0.4;
+    // Adjust center coordinates for devicePixelRatio
+    const centerX = (width / 2) / devicePixelRatio;
+    const centerY = (height / 2) / devicePixelRatio;
 
-    // Update angles
-    angleRef.current.outer += outerArmSpeed;
-    angleRef.current.inner += innerArmSpeed;
+    // Dynamically calculate radii based on display size
+    const outerRadius = Math.min(width, height) * 0.2; // 20% of the smaller dimension
+    const innerRadius = outerRadius * 0.5;
 
     // Calculate outer arm position
     const outerX = centerX + Math.cos(angleRef.current.outer) * outerRadius;
@@ -51,7 +49,7 @@ const Spirograph: React.FC = () => {
 
     // Add point to fading trail with age 0
     pointsRef.current.push({ x: penX, y: penY, age: 0 });
-    
+
     // Add point to continuous line
     allPointsRef.current.push({ x: penX, y: penY });
 
@@ -84,7 +82,7 @@ const Spirograph: React.FC = () => {
         ctx.lineTo(allPointsRef.current[i].x, allPointsRef.current[i].y);
       }
     }
-    ctx.strokeStyle = "#fffb"; // Very transparent white
+    ctx.strokeStyle = "#aaa"; 
     ctx.lineWidth = 1;
     ctx.stroke();
 
@@ -109,8 +107,8 @@ const Spirograph: React.FC = () => {
           currentPoint.y
         );
 
-        const color = `rgba(255, 255, 255, ${opacity})`;
-        const glowColor = `rgba(150, 200, 255, ${opacity * 0.8})`;
+        const color = `rgba(200, 200, 255, ${opacity})`;
+        const glowColor = `rgba(255, 255, 250, ${opacity * 0.8})`;
 
         gradient.addColorStop(0, glowColor);
         gradient.addColorStop(1, color);
@@ -121,11 +119,38 @@ const Spirograph: React.FC = () => {
       }
     }
 
+    const circleStrokeColor = "#ffffff0f";
+    const circleFillColor = "#ffffff01";
+
+    // outer circle
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = circleStrokeColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // outer circle fill
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = circleFillColor;
+    ctx.fill();
+    //inner circle
+    ctx.beginPath();
+    ctx.arc(outerX, outerY, innerRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = circleStrokeColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    //inner circle fill
+    ctx.beginPath();
+    ctx.arc(outerX, outerY, innerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = circleFillColor;
+    ctx.fill();
+
+    const armStrokeColor = "#ffffff88";
     // Draw outer arm
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
     ctx.lineTo(outerX, outerY);
-    ctx.strokeStyle = "#888";
+    ctx.strokeStyle = armStrokeColor;
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -133,25 +158,29 @@ const Spirograph: React.FC = () => {
     ctx.beginPath();
     ctx.moveTo(outerX, outerY);
     ctx.lineTo(penX, penY);
-    ctx.strokeStyle = "#888";
+    ctx.strokeStyle = armStrokeColor;
     ctx.stroke();
+
+    // join size radius
+    const pointRadius = 10;
+    const fillColor = "#efe3";
 
     // Draw center point
     ctx.beginPath();
-    ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "#333";
+    ctx.arc(centerX, centerY, pointRadius, 0, Math.PI * 2);
+    ctx.fillStyle = fillColor;
     ctx.fill();
 
     // Draw outer joint
     ctx.beginPath();
-    ctx.arc(outerX, outerY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = "#555";
+    ctx.arc(outerX, outerY, pointRadius, 0, Math.PI * 2);
+    ctx.fillStyle = fillColor;
     ctx.fill();
 
     // Draw pen point
     ctx.beginPath();
     ctx.arc(penX, penY, 3, 0, Math.PI * 2);
-    ctx.fillStyle = "white";
+    ctx.fillStyle = fillColor;
     ctx.fill();
 
     // Add glow around the pen point
@@ -179,6 +208,20 @@ const Spirograph: React.FC = () => {
 
     if (!ctx) return;
 
+    // Define frequency to control the wavelength of the sine function
+    const frequency = 5; // Adjust this value to control the wavelength (higher = faster oscillations)
+
+    // Update baseSpeed dynamically using a sine function
+    const time = performance.now() / 1000; // Time in seconds
+    baseSpeedRef.current = 0.02 + 0.01 * Math.sin(time * frequency); // Base speed oscillates based on frequency
+
+    const outerArmSpeed = baseSpeedRef.current;
+    const innerArmSpeed = baseSpeedRef.current * Math.PI;
+
+    // Update angles based on dynamic speeds
+    angleRef.current.outer += outerArmSpeed;
+    angleRef.current.inner += innerArmSpeed;
+
     drawSpirograph(ctx, canvas.width, canvas.height);
 
     if (drawing) {
@@ -190,8 +233,20 @@ const Spirograph: React.FC = () => {
     if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Adjust canvas size for high-resolution displays
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    const width = window.innerWidth; // Use window dimensions for centering
+    const height = window.innerHeight;
+
+    canvas.width = width * devicePixelRatio;
+    canvas.height = height * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+
+    canvas.style.width = `${width}px`; // Ensure proper scaling
+    canvas.style.height = `${height}px`;
 
     if (drawing) {
       requestIdRef.current = requestAnimationFrame(animate);
@@ -204,7 +259,7 @@ const Spirograph: React.FC = () => {
         cancelAnimationFrame(requestIdRef.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawing]);
 
   return <canvas ref={canvasRef} className="h-screen w-screen bg-primary" />;
