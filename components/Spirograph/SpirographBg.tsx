@@ -1,119 +1,152 @@
 "use client";
-import { useRef, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const Spirograph: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const requestIdRef = useRef<number | null>(null);
 
-  // State for controlling the speed of the inner and outer arms
-  //   const [innerSpeed, setInnerSpeed] = useState(0.01);
-  //   const [outerSpeed, setOuterSpeed] = useState(0.005);
-  const baseSpeed = 0.001;
-  const innerSpeed = baseSpeed;
-  const outerSpeed = baseSpeed * Math.PI;
+  const baseSpeed=0.05;
+  const outerArmSpeed = baseSpeed;
+  const innerArmSpeed = baseSpeed * Math.PI;
+  const drawing = true;
+  const [clear, setClear] = useState<boolean>(false);
 
-  useEffect(() => {
+  // State to track angles
+  const angleRef = useRef<{ outer: number; inner: number }>({
+    outer: 0,
+    inner: 0,
+  });
+  // State to track path points
+  const pointsRef = useRef<Array<{ x: number; y: number }>>([]);
+
+  const drawSpirograph = (
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): void => {
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    // const outerRadius = Math.min(width, height) * 0.2;
+    const outerRadius = 150;
+    const innerRadius = outerRadius * 0.4;
+
+    // Update angles
+    angleRef.current.outer += outerArmSpeed;
+    angleRef.current.inner += innerArmSpeed;
+
+    // Calculate outer arm position
+    const outerX = centerX + Math.cos(angleRef.current.outer) * outerRadius;
+    const outerY = centerY + Math.sin(angleRef.current.outer) * outerRadius;
+
+    // Calculate pen position (end of inner arm)
+    const penX = outerX + Math.cos(angleRef.current.inner) * innerRadius;
+    const penY = outerY + Math.sin(angleRef.current.inner) * innerRadius;
+
+    // Add point to path
+    pointsRef.current.push({ x: penX, y: penY });
+
+    // Clear canvas if requested
+    if (clear) {
+      ctx.clearRect(0, 0, width, height);
+      pointsRef.current = [];
+      setClear(false);
+    }
+
+    // Draw the spirograph structure
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw outer arm
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(outerX, outerY);
+    ctx.strokeStyle = "#888";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw inner arm
+    ctx.beginPath();
+    ctx.moveTo(outerX, outerY);
+    ctx.lineTo(penX, penY);
+    ctx.strokeStyle = "#888";
+    ctx.stroke();
+
+    // Draw center point
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#333";
+    ctx.fill();
+
+    // Draw outer joint
+    ctx.beginPath();
+    ctx.arc(outerX, outerY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = "#555";
+    ctx.fill();
+
+    // Draw pen point
+    ctx.beginPath();
+    ctx.arc(penX, penY, 3, 0, Math.PI * 2);
+    ctx.fillStyle = "white";
+    ctx.fill();
+
+    // Draw the path
+    ctx.beginPath();
+    if (pointsRef.current.length > 0) {
+      ctx.moveTo(pointsRef.current[0].x, pointsRef.current[0].y);
+      for (let i = 1; i < pointsRef.current.length; i++) {
+        ctx.lineTo(pointsRef.current[i].x, pointsRef.current[i].y);
+      }
+    }
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  };
+
+  const animate = (): void => {
+    if (!canvasRef.current) return;
+
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
+
     if (!ctx) return;
 
-    const width = (canvas.width = window.innerWidth);
-    const height = (canvas.height = window.innerHeight);
+    drawSpirograph(ctx, canvas.width, canvas.height);
 
-    let tInner = 0; // Time variable for the inner arm
-    let tOuter = 0; // Time variable for the outer arm
+    if (drawing) {
+      requestIdRef.current = requestAnimationFrame(animate);
+    }
+  };
 
-    const R = 250; // Fixed circle radius
-    const r = 50; // Rolling circle radius
-    const d = 100; // Pen distance from rolling circle center
+  useEffect(() => {
+    if (!canvasRef.current) return;
 
-    ctx.translate(width / 2, height / 2);
+    const canvas = canvasRef.current;
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
 
-    const spirographCanvas = document.createElement("canvas");
-    const spiroCtx = spirographCanvas.getContext("2d");
-    if (!spiroCtx) return;
+    if (drawing) {
+      requestIdRef.current = requestAnimationFrame(animate);
+    } else if (requestIdRef.current) {
+      cancelAnimationFrame(requestIdRef.current);
+    }
 
-    spirographCanvas.width = width;
-    spirographCanvas.height = height;
-    spiroCtx.translate(width / 2, height / 2);
-
-    function drawSpirograph() {
-      if (spiroCtx === null) return;
-      spiroCtx.beginPath();
-      for (let i = 0; i <= 1; i++) {
-        const angleInner = 0.01 * i + tInner; // Use tInner for the inner arm
-        const angleOuter = 0.01 * i  + tOuter; // Use tOuter for the outer arm
-        const x =
-          (R - r) * Math.cos(angleOuter) +
-          d * Math.cos(((R - r) / r) * angleInner);
-        const y =
-          (R - r) * Math.sin(angleOuter) -
-          d * Math.sin(((R - r) / r) * angleInner);
-        spiroCtx.lineTo(x, y);
+    return () => {
+      if (requestIdRef.current) {
+        cancelAnimationFrame(requestIdRef.current);
       }
-      spiroCtx.strokeStyle = "rgba(0, 0, 0, 0.1)";
-      spiroCtx.lineWidth = 1;
-      spiroCtx.stroke();
-    }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawing]);
 
-    function fadeArms(ctx: CanvasRenderingContext2D) {
-      ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
-      ctx.fillRect(-width / 2, -height / 2, width, height);
-    }
+  // const handleClearCanvas = (): void => {
+  //   setClear(true);
+  // };
 
-    function drawArms() {
-      const angleInner = tInner;
-      const angleOuter = tOuter;
-      const armX =
-        (R - r) * Math.cos(angleOuter) +
-        d * Math.cos(((R - r) / r) * angleInner);
-      const armY =
-        (R - r) * Math.sin(angleOuter) -
-        d * Math.sin(((R - r) / r) * angleInner);
+  // const handleToggleDrawing = (): void => {
+  //   setDrawing((prev) => !prev);
+  // };
 
-      if (ctx === null) return;
-
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(
-        (R - r) * Math.cos(angleOuter),
-        (R - r) * Math.sin(angleOuter)
-      );
-      ctx.strokeStyle = "rgba(128, 128, 128, 0.3)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(
-        (R - r) * Math.cos(angleOuter),
-        (R - r) * Math.sin(angleOuter)
-      );
-      ctx.lineTo(armX, armY);
-      ctx.strokeStyle = "rgba(255, 0, 0, 0.3)";
-      ctx.stroke();
-    }
-
-    function animate() {
-      fadeArms(ctx!);
-      ctx!.drawImage(spirographCanvas, -width / 2, -height / 2);
-      drawSpirograph();
-      drawArms();
-      tInner += innerSpeed; // Increment inner arm speed
-      tOuter += outerSpeed; // Increment outer arm speed
-
-      requestAnimationFrame(animate);
-    }
-
-    animate();
-  }, [innerSpeed, outerSpeed]); // Re-run effect when speeds change
-
-  return (
-    <div>
-      <canvas ref={canvasRef} className="w-full h-full absolute top-0 left-0" />
-
-    </div>
-  );
+  return <canvas ref={canvasRef} className="h-screen w-screen bg-primary" />;
 };
 
 export default Spirograph;
