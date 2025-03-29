@@ -4,6 +4,9 @@ import React, { useEffect, useRef, useState } from "react";
 const Spirograph: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const requestIdRef = useRef<number | null>(null);
+  const lastFrameTimeRef = useRef<number>(0);
+  const FPS = 60; // Limit to 60 frames per second
+  const frameInterval = 1000 / FPS;
 
   const drawing = true;
 
@@ -18,8 +21,37 @@ const Spirograph: React.FC = () => {
 
   // State to track path points with age for fading
   const pointsRef = useRef<Array<{ x: number; y: number; age: number }>>([]);
-  // All path points for continuous line
+  // All path points for continuous line with a maximum size
   const allPointsRef = useRef<Array<{ x: number; y: number }>>([]);
+  const maxAllPoints = 2260; // Limit total points to prevent memory issues
+
+  // Point object pool to reduce garbage collection
+  const pointPoolRef = useRef<Array<{ x: number; y: number; age: number }>>([]);
+  const allPointPoolRef = useRef<Array<{ x: number; y: number }>>([]);
+
+  // Function to get a point from the pool or create a new one if needed
+  const getPointFromPool = (): { x: number; y: number; age: number } => {
+    if (pointPoolRef.current.length > 0) {
+      return pointPoolRef.current.pop()!;
+    }
+    return { x: 0, y: 0, age: 0 };
+  };
+
+  const getAllPointFromPool = (): { x: number; y: number } => {
+    if (allPointPoolRef.current.length > 0) {
+      return allPointPoolRef.current.pop()!;
+    }
+    return { x: 0, y: 0 };
+  };
+
+  // Return points to the pool when no longer needed
+  const returnPointToPool = (point: { x: number; y: number; age: number }) => {
+    pointPoolRef.current.push(point);
+  };
+
+  const returnAllPointToPool = (point: { x: number; y: number }) => {
+    allPointPoolRef.current.push(point);
+  };
 
   const maxTrailPoints = 800; // Maximum number of points to keep in the trail
   const trailFadeRate = 0.01; // How quickly the trail fades (0-1)
@@ -32,8 +64,8 @@ const Spirograph: React.FC = () => {
     const devicePixelRatio = window.devicePixelRatio || 1;
 
     // Adjust center coordinates for devicePixelRatio
-    const centerX = (width / 2) / devicePixelRatio;
-    const centerY = (height / 2) / devicePixelRatio;
+    const centerX = width / 2 / devicePixelRatio;
+    const centerY = height / 2 / devicePixelRatio;
 
     // Dynamically calculate radii based on display size
     const outerRadius = Math.min(width, height) * 0.2; // 20% of the smaller dimension
@@ -47,15 +79,29 @@ const Spirograph: React.FC = () => {
     const penX = outerX + Math.cos(angleRef.current.inner) * innerRadius;
     const penY = outerY + Math.sin(angleRef.current.inner) * innerRadius;
 
-    // Add point to fading trail with age 0
-    pointsRef.current.push({ x: penX, y: penY, age: 0 });
+    // Get point from pool instead of creating new object
+    const newPoint = getPointFromPool();
+    newPoint.x = penX;
+    newPoint.y = penY;
+    newPoint.age = 0;
+    pointsRef.current.push(newPoint);
 
-    // Add point to continuous line
-    allPointsRef.current.push({ x: penX, y: penY });
+    // Get all point from pool
+    const newAllPoint = getAllPointFromPool();
+    newAllPoint.x = penX;
+    newAllPoint.y = penY;
+    allPointsRef.current.push(newAllPoint);
 
     // Limit trail length for fading effect
     if (pointsRef.current.length > maxTrailPoints) {
-      pointsRef.current.shift();
+      const removedPoint = pointsRef.current.shift();
+      if (removedPoint) returnPointToPool(removedPoint);
+    }
+
+    // Limit total points to prevent memory issues
+    if (allPointsRef.current.length > maxAllPoints) {
+      const removedAllPoint = allPointsRef.current.shift();
+      if (removedAllPoint) returnAllPointToPool(removedAllPoint);
     }
 
     // Age existing points
@@ -66,6 +112,11 @@ const Spirograph: React.FC = () => {
     // Clear canvas if requested
     if (clear) {
       ctx.clearRect(0, 0, width, height);
+
+      // Return all points to pool before clearing arrays
+      pointsRef.current.forEach((point) => returnPointToPool(point));
+      allPointsRef.current.forEach((point) => returnAllPointToPool(point));
+
       pointsRef.current = [];
       allPointsRef.current = [];
       setClear(false);
@@ -82,7 +133,7 @@ const Spirograph: React.FC = () => {
         ctx.lineTo(allPointsRef.current[i].x, allPointsRef.current[i].y);
       }
     }
-    ctx.strokeStyle = "#aaa"; 
+    ctx.strokeStyle = "#aaa";
     ctx.lineWidth = 1;
     ctx.stroke();
 
@@ -200,8 +251,18 @@ const Spirograph: React.FC = () => {
     ctx.fill();
   };
 
-  const animate = (): void => {
+  const animate = (timestamp: number): void => {
     if (!canvasRef.current) return;
+
+    // Implement frame rate control
+    const elapsed = timestamp - lastFrameTimeRef.current;
+    if (elapsed < frameInterval) {
+      requestIdRef.current = requestAnimationFrame(animate);
+      return;
+    }
+
+    // Calculate actual FPS and adjust for dropped frames
+    lastFrameTimeRef.current = timestamp - (elapsed % frameInterval);
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -212,7 +273,7 @@ const Spirograph: React.FC = () => {
     const frequency = 0.5; // Adjust this value to control the wavelength (higher = faster oscillations)
 
     // Update baseSpeed dynamically using a sine function
-    const time = performance.now() / 1000; // Time in seconds
+    const time = timestamp / 1000; // Time in seconds
     baseSpeedRef.current = 0.02 + 0.01 * Math.sin(time * frequency); // Base speed oscillates based on frequency
 
     const outerArmSpeed = baseSpeedRef.current;
@@ -230,6 +291,12 @@ const Spirograph: React.FC = () => {
   };
 
   useEffect(() => {
+    // Pre-populate point pools to avoid allocations during animation
+    for (let i = 0; i < 1000; i++) {
+      pointPoolRef.current.push({ x: 0, y: 0, age: 0 });
+      allPointPoolRef.current.push({ x: 0, y: 0 });
+    }
+
     if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
@@ -249,6 +316,7 @@ const Spirograph: React.FC = () => {
     canvas.style.height = `${height}px`;
 
     if (drawing) {
+      lastFrameTimeRef.current = performance.now();
       requestIdRef.current = requestAnimationFrame(animate);
     } else if (requestIdRef.current) {
       cancelAnimationFrame(requestIdRef.current);
@@ -259,7 +327,7 @@ const Spirograph: React.FC = () => {
         cancelAnimationFrame(requestIdRef.current);
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawing]);
 
   return <canvas ref={canvasRef} className="h-screen w-screen bg-primary" />;
