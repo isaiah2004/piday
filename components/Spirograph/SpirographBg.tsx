@@ -21,7 +21,7 @@ const Spirograph: React.FC = () => {
   // All path points for continuous line
   const allPointsRef = useRef<Array<{ x: number; y: number }>>([]);
 
-  const maxTrailPoints = 500; // Maximum number of points to keep in the trail
+  const maxTrailPoints = 800; // Maximum number of points to keep in the trail
   const trailFadeRate = 0.01; // How quickly the trail fades (0-1)
 
   const drawSpirograph = (
@@ -119,8 +119,8 @@ const Spirograph: React.FC = () => {
       }
     }
 
-    const circleStrokeColor = "#ffffff0f";
-    const circleFillColor = "#ffffff01";
+    const circleStrokeColor = "#ffffff4f";
+    const circleFillColor = "#ffffff0f";
 
     // outer circle
     ctx.beginPath();
@@ -163,7 +163,7 @@ const Spirograph: React.FC = () => {
 
     // join size radius
     const pointRadius = 10;
-    const fillColor = "#efe3";
+    const fillColor = "#efe7";
 
     // Draw center point
     ctx.beginPath();
@@ -209,7 +209,7 @@ const Spirograph: React.FC = () => {
     if (!ctx) return;
 
     // Define frequency to control the wavelength of the sine function
-    const frequency = 5; // Adjust this value to control the wavelength (higher = faster oscillations)
+    const frequency = 0.5; // Adjust this value to control the wavelength (higher = faster oscillations)
 
     // Update baseSpeed dynamically using a sine function
     const time = performance.now() / 1000; // Time in seconds
