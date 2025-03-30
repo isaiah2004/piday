@@ -3,7 +3,7 @@ import TenKDigitsBg from "@/components/tenKdigitsBg/tenKDigitsBg";
 export default function Home() {
   return (
     <div className="bg-primary w-screen h-screen relative justify-center items-center">
-      <div className="w-full h-full">
+      <div className="w-full h-full overflow-hidden opacity-30">
       <TenKDigitsBg />
       </div>
             
