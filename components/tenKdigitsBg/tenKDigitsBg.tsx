@@ -90,8 +90,8 @@ export default function TenKDigitsBg() {
 
       // Draw the circles
       const ratio = (rect.width / rect.height)*5 ;
-      const circleWidth = rect.width / (ratio* 40);
-      const circleHeight = rect.height / (ratio * 40);
+      const circleWidth = rect.width / (ratio* 20);
+      const circleHeight = rect.height / (ratio * 20);
 
       for (let i = 0; i < colors.length; i++) {
         const row = Math.floor(i / COLS);

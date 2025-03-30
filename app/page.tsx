@@ -7,9 +7,9 @@ export default function Home() {
       <TenKDigitsBg />
       </div>
             
-      <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center z-10">
-        <div className="text-5xl text-primary-foreground shadow-lg bg-primary/30 p-5">
-          PI-cipher
+      <div className="absolute top-0 left-0 w-full flex justify-center items-center z-10">
+        <div className="text-5xl text-primary-foreground shadow-md shadow-primary-foreground/30 m-3 rounded-md bg-primary/50 border-2 border-primary-foreground p-5">
+        Pi(π)-cipher
         </div>
       </div>
       <div className="absolute top-0 z-10 justify-between items-center">
