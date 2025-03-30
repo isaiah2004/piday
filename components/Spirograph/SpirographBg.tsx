@@ -2,7 +2,8 @@
 import React, { useEffect, useRef, useState } from "react";
 
 const Spirograph: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const patternCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const controlsCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const requestIdRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
   const FPS = 60; // Limit to 60 frames per second
@@ -11,6 +12,7 @@ const Spirograph: React.FC = () => {
   const drawing = true;
 
   const baseSpeedRef = useRef(0.01); // Use a ref to dynamically update baseSpeed
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [clear, setClear] = useState<boolean>(false);
 
   // State to track angles
@@ -23,7 +25,9 @@ const Spirograph: React.FC = () => {
   const pointsRef = useRef<Array<{ x: number; y: number; age: number }>>([]);
   // All path points for continuous line with a maximum size
   const allPointsRef = useRef<Array<{ x: number; y: number }>>([]);
-  const maxAllPoints = 2260; // Limit total points to prevent memory issues
+  // const maxAllPoints = 4526; // Limit total points to prevent memory issues
+  const maxAllPoints = 4; // Limit total points to prevent memory issues
+
 
   // Point object pool to reduce garbage collection
   const pointPoolRef = useRef<Array<{ x: number; y: number; age: number }>>([]);
@@ -56,7 +60,32 @@ const Spirograph: React.FC = () => {
   const maxTrailPoints = 800; // Maximum number of points to keep in the trail
   const trailFadeRate = 0.01; // How quickly the trail fades (0-1)
 
-  const drawSpirograph = (
+  // Draw just the spirograph pattern
+  const drawSpirographPattern = (
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): void => {
+    // Only clear when explicitly requested
+    if (clear) {
+      ctx.clearRect(0, 0, width, height);
+    }
+
+    // Draw the continuous line without clearing first
+    ctx.beginPath();
+    if (allPointsRef.current.length > 0) {
+      ctx.moveTo(allPointsRef.current[0].x, allPointsRef.current[0].y);
+      for (let i = 1; i < allPointsRef.current.length; i++) {
+        ctx.lineTo(allPointsRef.current[i].x, allPointsRef.current[i].y);
+      }
+    }
+    ctx.strokeStyle = "#aaa";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  };
+
+  // Draw the controls, arms, circles and trail
+  const drawControlElements = (
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number
@@ -119,23 +148,10 @@ const Spirograph: React.FC = () => {
 
       pointsRef.current = [];
       allPointsRef.current = [];
-      setClear(false);
     }
 
-    // Draw the spirograph structure
+    // Clear the controls canvas
     ctx.clearRect(0, 0, width, height);
-
-    // Draw the continuous line first (background)
-    ctx.beginPath();
-    if (allPointsRef.current.length > 0) {
-      ctx.moveTo(allPointsRef.current[0].x, allPointsRef.current[0].y);
-      for (let i = 1; i < allPointsRef.current.length; i++) {
-        ctx.lineTo(allPointsRef.current[i].x, allPointsRef.current[i].y);
-      }
-    }
-    ctx.strokeStyle = "#aaa";
-    ctx.lineWidth = 1;
-    ctx.stroke();
 
     // Draw the trail with gradient opacity
     if (pointsRef.current.length > 1) {
@@ -252,7 +268,7 @@ const Spirograph: React.FC = () => {
   };
 
   const animate = (timestamp: number): void => {
-    if (!canvasRef.current) return;
+    if (!patternCanvasRef.current || !controlsCanvasRef.current) return;
 
     // Implement frame rate control
     const elapsed = timestamp - lastFrameTimeRef.current;
@@ -264,17 +280,19 @@ const Spirograph: React.FC = () => {
     // Calculate actual FPS and adjust for dropped frames
     lastFrameTimeRef.current = timestamp - (elapsed % frameInterval);
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    const patternCanvas = patternCanvasRef.current;
+    const controlsCanvas = controlsCanvasRef.current;
+    const patternCtx = patternCanvas.getContext("2d");
+    const controlsCtx = controlsCanvas.getContext("2d");
 
-    if (!ctx) return;
+    if (!patternCtx || !controlsCtx) return;
 
     // Define frequency to control the wavelength of the sine function
     const frequency = 0.5; // Adjust this value to control the wavelength (higher = faster oscillations)
 
     // Update baseSpeed dynamically using a sine function
     const time = timestamp / 1000; // Time in seconds
-    baseSpeedRef.current = 0.02 + 0.01 * Math.sin(time * frequency); // Base speed oscillates based on frequency
+    baseSpeedRef.current = 0.04 + 0.01 * Math.sin(time * frequency); // Base speed oscillates based on frequency
 
     const outerArmSpeed = baseSpeedRef.current;
     const innerArmSpeed = baseSpeedRef.current * Math.PI;
@@ -283,7 +301,9 @@ const Spirograph: React.FC = () => {
     angleRef.current.outer += outerArmSpeed;
     angleRef.current.inner += innerArmSpeed;
 
-    drawSpirograph(ctx, canvas.width, canvas.height);
+    // Draw on both canvases
+    drawSpirographPattern(patternCtx, patternCanvas.width, patternCanvas.height);
+    drawControlElements(controlsCtx, controlsCanvas.width, controlsCanvas.height);
 
     if (drawing) {
       requestIdRef.current = requestAnimationFrame(animate);
@@ -297,23 +317,29 @@ const Spirograph: React.FC = () => {
       allPointPoolRef.current.push({ x: 0, y: 0 });
     }
 
-    if (!canvasRef.current) return;
+    if (!patternCanvasRef.current || !controlsCanvasRef.current) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const patternCanvas = patternCanvasRef.current;
+    const controlsCanvas = controlsCanvasRef.current;
+    const patternCtx = patternCanvas.getContext("2d");
+    const controlsCtx = controlsCanvas.getContext("2d");
+    
+    if (!patternCtx || !controlsCtx) return;
 
     // Adjust canvas size for high-resolution displays
     const devicePixelRatio = window.devicePixelRatio || 1;
     const width = window.innerWidth; // Use window dimensions for centering
     const height = window.innerHeight;
 
-    canvas.width = width * devicePixelRatio;
-    canvas.height = height * devicePixelRatio;
-    ctx.scale(devicePixelRatio, devicePixelRatio);
-
-    canvas.style.width = `${width}px`; // Ensure proper scaling
-    canvas.style.height = `${height}px`;
+    // Set size for both canvases
+    [patternCanvas, controlsCanvas].forEach(canvas => {
+      canvas.width = width * devicePixelRatio;
+      canvas.height = height * devicePixelRatio;
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.scale(devicePixelRatio, devicePixelRatio);
+      canvas.style.width = `${width}px`; // Ensure proper scaling
+      canvas.style.height = `${height}px`;
+    });
 
     if (drawing) {
       lastFrameTimeRef.current = performance.now();
@@ -330,7 +356,18 @@ const Spirograph: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawing]);
 
-  return <canvas ref={canvasRef} className="h-screen w-screen bg-primary" />;
+  return (
+    <div className="relative h-screen w-screen">
+      <canvas 
+        ref={patternCanvasRef} 
+        className="absolute inset-0 h-full w-full" 
+      />
+      <canvas 
+        ref={controlsCanvasRef} 
+        className="absolute inset-0 h-full w-full" 
+      />
+    </div>
+  );
 };
 
 export default Spirograph;

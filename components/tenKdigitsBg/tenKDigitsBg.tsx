@@ -18,27 +18,28 @@ export default function TenKDigitsBg() {
             .join("") // Combine all lines
             .replace(/[^0-9a-fA-F]/g, "") // Remove non-hex characters
             .match(/.{1,6}/g) || []; // Group into 6-character chunks
-        console.log(hexValues);
-        setColors(hexValues.map((hex) => `#${hex.padEnd(6, "0")}`)); // Ensure valid hex colors
+
+        const valueArray = (hexValues || []).slice(0, 1600);
+        console.log(valueArray.length);
+        setColors(valueArray.map((hex) => `#${hex.padEnd(6, "0")}`)); // Ensure valid hex colors
       });
   }, []);
 
   return (
-    <div className="p-4 bg-primary h-screen w-screen">
-      <h1 className="text-3xl text-primary-foreground w-full font-bold mb-4">Your looking at 10,000 digits of pi</h1>
-      <div className="grid grid-cols-50 gap-1">
+      <div className="grid grid-cols-40 z-0 h-full w-full opacity-100 ">
         {colors.map((color, index) => (
           <div
             key={index}
             style={{
               backgroundColor: color,
-              width: "20px",
-              height: "20px",
+              borderRadius: "0%",
+              width: "calc(100% / 10 )",
+              height: "calc(100% / 10)",
+              border: "1px solid #fff4"
             }}
             title={color}
           ></div>
         ))}
       </div>
-    </div>
   );
 }
