@@ -57,8 +57,9 @@ export default function TenKDigitsBg() {
       mousePositionRef.current = newPosition;
 
       // Apply parallax directly to container div
-      const parallaxX = (0.5 - newPosition.x) * 30;
-      const parallaxY = (0.5 - newPosition.y) * 30;
+      const strength =10;
+      const parallaxX = (0.5 - newPosition.x) * strength;
+      const parallaxY = (0.5 - newPosition.y) * strength;
       setTransform(`translate(${parallaxX}px, ${parallaxY}px)`);
     };
 
@@ -88,32 +89,90 @@ export default function TenKDigitsBg() {
       // Apply scaling for high DPI screens
       ctx.scale(dpr, dpr);
 
-      // Draw the circles
-      const ratio = (rect.width / rect.height)*5 ;
-      const circleWidth = rect.width / (ratio* 20);
-      const circleHeight = rect.height / (ratio * 20);
+      // Calculate section widths
+      const leftSectionWidth = rect.width * 0.25;
+      const middleSectionWidth = rect.width * 0.5;
+      const rightSectionWidth = rect.width * 0.25;
 
+      // Calculate circle sizes
+      const ratio = (rect.width / rect.height) * 5;
+      const circleWidth = leftSectionWidth / (ratio * 10);
+      const circleHeight = rect.height / (ratio * 20);
+      const circleSize = Math.min(circleWidth, circleHeight) / 2;
+
+      // Adjusted columns per section
+      const colsPerSection = COLS / 2; // Half the columns for each section
+
+      // Draw all the circles first
       for (let i = 0; i < colors.length; i++) {
         const row = Math.floor(i / COLS);
         const col = i % COLS;
 
-        const x = (col * rect.width) / COLS + circleWidth / 2;
-        const y = (row * rect.height) / ROWS + circleHeight / 2;
+        let x;
+        // Position for left section
+        if (col < colsPerSection) {
+          x = (col * leftSectionWidth) / colsPerSection + circleSize;
+        }
+        // Position for circles that would be in middle section - draw them on right
+        else {
+          // Calculate position on right side
+          // Map both middle and right section circles to the right section
+          const rightSideCol = col - colsPerSection;
+          // Compress all remaining columns into the right section
+          x =
+            leftSectionWidth +
+            middleSectionWidth +
+            (rightSideCol * rightSectionWidth) / colsPerSection +
+            circleSize;
+        }
+
+        const y = (row * rect.height) / ROWS + circleSize;
 
         // Draw the circle
         ctx.beginPath();
-        ctx.arc(
-          x,
-          y,
-          Math.min(circleWidth, circleHeight) / 2,
-          0,
-          Math.PI * 2
-        );
+        ctx.arc(x, y, circleSize, 0, Math.PI * 2);
         ctx.fillStyle = colors[i];
         ctx.fill();
         ctx.strokeStyle = "#fff4";
         ctx.stroke();
       }
+
+      // Draw the title text on the vertical borders between sections
+      ctx.save();
+
+      // Set text properties
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      
+      // Function to draw vertical text
+      const drawVerticalText = (text: string, x: number, y: number, direction: 'up' | 'down') => {
+        ctx.save();
+        ctx.translate(x, y);
+        
+        // Rotate based on direction
+        if (direction === 'up') {
+          ctx.rotate(-Math.PI/2);
+        } else {
+          ctx.rotate(Math.PI/2);
+        }
+        
+        ctx.textAlign = 'center';
+        ctx.fillText(text, 0, 0);
+        ctx.restore();
+      };
+      
+      // Border between section 1 (left) and section 2 (middle)
+      const border1X = leftSectionWidth;
+      const stylisticOffset = 100;
+      drawVerticalText('The first 5000 digits of Pi (approx.)', border1X, rect.height / 2 + 100 + stylisticOffset, 'up');
+      drawVerticalText('but as a grid of colors', border1X, rect.height / 2 -120 + stylisticOffset, 'up');
+      
+      // Border between section 2 (middle) and section 3 (right)
+      const border2X = leftSectionWidth -20+ middleSectionWidth;
+      drawVerticalText('The second 5000 digits of Pi (approx.)', border2X, rect.height / 2 - 100 - stylisticOffset, 'down');
+      drawVerticalText('but as a grid of colors', border2X, rect.height / 2 + 130 - stylisticOffset, 'down');
+
+      ctx.restore();
     }
   }, [colors]);
 
@@ -146,16 +205,16 @@ export default function TenKDigitsBg() {
   return (
     <div
       ref={containerRef}
-      className="z-0 h-full w-full relative overflow-hidden"
+      className="z-1 h-full w-full relative overflow-hidden bg-primary/30 backdrop-blur-sm"
     >
       <div
-        className="absolute top-0 left-0 w-full h-full scale-87"
+        className="absolute top-0 left-0 w-full h-full scale-75 flex flex-row justify-between"
         style={{
           transform: isMobile ? "translate(0px, 0px)" : transform,
           transition: "transform 0.05s ease-out",
         }}
       >
-        <canvas ref={canvasRef} className="w-full h-full" />
+        <canvas ref={canvasRef} className="h-full w-1/2" />
       </div>
     </div>
   );

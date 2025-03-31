@@ -6,7 +6,7 @@ const Spirograph: React.FC = () => {
   const controlsCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const requestIdRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
-  const FPS = 60; // Limit to 60 frames per second
+  const FPS = 144; // Limit to 60 frames per second
   const frameInterval = 1000 / FPS;
 
   const drawing = true;
@@ -97,7 +97,8 @@ const Spirograph: React.FC = () => {
     const centerY = height / 2 / devicePixelRatio;
 
     // Dynamically calculate radii based on display size
-    const outerRadius = Math.min(width, height) * 0.2; // 20% of the smaller dimension
+    const mobAdjust = width < height ? 0.5 : 1;
+    const outerRadius = Math.min(width, height) * 0.15* mobAdjust; // 20% of the smaller dimension
     const innerRadius = outerRadius * 0.5;
 
     // Calculate outer arm position
