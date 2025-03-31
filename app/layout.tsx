@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pi Museum",
+  title: "Pi-Cipher",
   description: "Built by 3pi4 studio",
 };
 

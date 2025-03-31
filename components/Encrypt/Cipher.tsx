@@ -73,6 +73,7 @@ export default function Cipher() {
 
   return (
     <div className="absolute bottom-0 left-0 mb-16 w-full flex justify-center items-center z-10">
+      <div className="w-5 h-full"></div>
       <Drawer>
         <DrawerTrigger className="bg-purple-50 p-3 py-2 rounded-lg">
           Result
