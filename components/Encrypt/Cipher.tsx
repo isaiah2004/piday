@@ -18,6 +18,7 @@ export default function Cipher() {
 
   return (
     <div className="absolute bottom-0 left-0 mb-16 w-full flex justify-center items-center z-10">
+      <div className="w-5 h-full"></div>
       <div className="bg-secondary/5 border-1 border-secondary/10 w-md flex flex-row p-4 gap-4 rounded-lg">
         <div className="flex w-full items-center justify-end ">
           <Input
@@ -30,14 +31,15 @@ export default function Cipher() {
         </div>
 
         <div className="flex flex-row gap-1 w-fit items-center">
-        <Button variant="secondary" type="submit" onClick={handleOperation} className="active:bg-primary active:text-primary-foreground">
+          <Button
+            variant="secondary"
+            type="submit"
+            onClick={handleOperation}
+            className="active:bg-primary active:text-primary-foreground"
+          >
             {isEncrypt ? "Encrypt" : "Decrypt"}
           </Button>
           <div className="flex flex-row justify-center">
-
-
-            
-
             {/* <span className="text-sm text-primary-foreground mr-2">
               {isEncrypt ? "Encrypt" : "Decrypt"}
             </span> */}
@@ -48,10 +50,9 @@ export default function Cipher() {
               aria-label="Toggle encryption mode"
             />
           </div>
-
-
         </div>
       </div>
+      <div className="w-5 h-full"></div>
     </div>
   );
 }

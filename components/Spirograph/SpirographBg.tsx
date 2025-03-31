@@ -97,7 +97,8 @@ const Spirograph: React.FC = () => {
     const centerY = height / 2 / devicePixelRatio;
 
     // Dynamically calculate radii based on display size
-    const mobAdjust = width < height ? 0.5 : 1;
+    const mobAdjust = width < height ? .65 : 1;
+    // console.log(mobAdjust)
     const outerRadius = Math.min(width, height) * 0.15* mobAdjust; // 20% of the smaller dimension
     const innerRadius = outerRadius * 0.5;
 

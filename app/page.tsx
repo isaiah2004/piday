@@ -6,7 +6,7 @@ export default function Home() {
   
   return (
     <div className="bg-primary w-screen h-screen relative justify-center items-center overflow-hidden">
-      <div className="w-full h-full overflow-hidden opacity-70 bg-primary/70 z-1">
+      <div className="hidden md:flex w-full h-full overflow-hidden opacity-70 bg-primary/70 z-1">
         <TenKDigitsBg />
       </div>
 
